@@ -1,68 +1,16 @@
-const http = require('http');
-var StringDecoder = require('string_decoder').StringDecoder;
+var http = require('http');
+var fs = require('fs');
 
-const getBody = (req, callback) => {
-  const decode = new StringDecoder('utf-8');
-  let body = '';
-  req.on('data', function (data) {
-    body += decode.write(data);
-  });
-  req.on('end', function () {
-    body += decode.end();
-    const body1 = decodeURI(body);
-    const bodyArray = body1.split('&');
-    const resultHash = {};
-    bodyArray.forEach((part) => {
-      const partArray = part.split('=');
-      resultHash[partArray[0]] = partArray[1];
+http
+  .createServer(function (req, res) {
+    // const text = fs.readFileSync('../content/big.txt', 'utf-8');
+    // res.end(text);
+    const fileStream = fs.createReadStream('../content/big.txt', 'utf8');
+    fileStream.on('open', () => {
+      fileStream.pipe(res);
     });
-    callback(resultHash);
-  });
-};
-
-// here, you could declare one or more variables to store what comes back from the form.
-let randomNumber = Math.floor(Math.random() * 100) + 1;
-let message = 'Guess a number between 1 and 100';
-
-// here, you can change the form below to modify the input fields and what is displayed.
-// This is just ordinary html with string interpolation.
-const form = () => {
-  return `
-  <body>
-  <p>${message}</p>
-  <form method="POST">
-  <input name="guess" type="number" min="1" max="100"></input>
-  <button type="submit">Submit</button>
-  </form>
-  </body>
-  `;
-};
-
-const server = http.createServer((req, res) => {
-  console.log('req.method is ', req.method);
-  console.log('req.url is ', req.url);
-  if (req.method === 'POST') {
-    getBody(req, (body) => {
-      console.log('The body of the post is ', body);
-      // here, you can add your own logic
-      const userGuess = parseInt(body['guess'], 10);
-      if (userGuess === randomNumber) {
-        message = 'Congratulations! You guessed the number!';
-      } else if (userGuess < randomNumber) {
-        message = 'Too low! Try again.';
-      } else {
-        message = 'Too high! Try again.';
-      }
-      // Your code changes would end here
-      res.writeHead(303, {
-        Location: '/',
-      });
-      res.end();
+    fileStream.on('error', (err) => {
+      res.end(err);
     });
-  } else {
-    res.end(form());
-  }
-});
-
-server.listen(3000);
-console.log('The server is listening on port 3000.');
+  })
+  .listen(5000);
