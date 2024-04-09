@@ -3,24 +3,16 @@ const router = express.Router();
 
 const {
   getPeople,
-  createPerson,
-  createPersonPostman,
+  addPerson,
+  getPersonById,
   updatePerson,
   deletePerson,
 } = require('../controllers/people');
 
-// router.get('/', getPeople);
-
-// router.post('/', createPerson);
-
-// router.post('/postman', createPersonPostman);
-
-// router.put('/:id', updatePerson);
-
-// router.delete('/:id', deletePerson);
-
-router.route('/').get(getPeople).post(createPerson);
-router.route('/postman').post(createPersonPostman);
-router.route('/:id').put(updatePerson).delete(deletePerson);
+router.get('/', getPeople);
+router.post('/', addPerson);
+router.get('/:id', getPersonById);
+router.put('/:id', updatePerson);
+router.delete('/:id', deletePerson);
 
 module.exports = router;

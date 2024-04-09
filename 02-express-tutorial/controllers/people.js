@@ -1,66 +1,78 @@
 const { people } = require('../data');
 
 const getPeople = (req, res) => {
-  res.status(200).json({ success: true, data: people });
+  try {
+    res.status(200).json(people);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error });
+  }
 };
 
-const createPerson = (req, res) => {
-  const { name } = req.body;
-  if (!name) {
-    return res
-      .status(400)
-      .json({ success: false, msg: 'please provide name value' });
+const addPerson = (req, res) => {
+  const name = req.body.name;
+  try {
+    if (!name) {
+      return res
+        .status(404)
+        .json({ success: false, msg: 'please provide name value' });
+    } else {
+      res.status(201).json({ success: true, person: name });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error });
   }
-  res.status(201).json({ success: true, person: name });
 };
 
-const createPersonPostman = (req, res) => {
-  const { name } = req.body;
-  if (!name) {
-    return res
-      .status(400)
-      .json({ success: false, msg: 'please provide name value' });
+const getPersonById = (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const person = people.find((p) => p.id === id);
+    if (person) {
+      res.status(201).json(person);
+    } else {
+      res.status(404).json({ success: false, msg: 'Person not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  res.status(201).send({ success: true, data: [...people, name] });
 };
 
 const updatePerson = (req, res) => {
-  const { id } = req.params;
-  const { name } = req.body;
-  const person = people.find((person) => person.id === Number(id));
-
-  if (!person) {
-    return res
-      .status(404)
-      .json({ success: false, msg: `no person with ${id}` });
-  }
-  const newPeople = people.map((person) => {
-    if (person.id === Number(id)) {
-      person.name = name;
+  try {
+    const id = parseInt(req.params.id);
+    const personIndex = people.findIndex((p) => p.id === id);
+    if (personIndex !== -1) {
+      const updatedPerson = { ...people[personIndex], ...req.body };
+      people[personIndex] = updatedPerson;
+      res.status(200).json(updatedPerson);
+    } else {
+      res.status(404).json({ success: false, message: 'Person not found' });
     }
-    return person;
-  });
-  res.status(201).json({ success: true, data: newPeople });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
 const deletePerson = (req, res) => {
-  const person = people.find((person) => person.id === Number(req.params.id));
-
-  if (!person) {
-    return res
-      .status(404)
-      .json({ success: false, msg: `no person with ${req.params.id}` });
+  try {
+    const id = parseInt(req.params.id);
+    const newPeople = people.filter((p) => p.id !== id);
+    if (newPeople.length !== people.length) {
+      people.length = 0; // Clear the array
+      people.push(...newPeople); // Push the updated array
+      res.json({ success: true, message: 'Person deleted' });
+    } else {
+      res.status(404).json({ success: false, message: 'Person not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  const newPeople = people.filter(
-    (person) => person.id !== Number(req.params.id)
-  );
-  return res.status(200).json({ success: true, data: newPeople });
 };
 
 module.exports = {
   getPeople,
-  createPerson,
-  createPersonPostman,
+  addPerson,
+  getPersonById,
   updatePerson,
   deletePerson,
 };
