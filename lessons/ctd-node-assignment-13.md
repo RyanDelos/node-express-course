@@ -119,7 +119,7 @@ These changes won’t suffice to do anything in the application, until routes ar
 
 Create a file `routes/sessionRoutes.js`, as follows:
 
-```
+```javascript
 const express = require("express");
 // const passport = require("passport");
 const router = express.Router();
@@ -152,7 +152,7 @@ module.exports = router;
 
 Ignore the passport lines for the moment. This just sets up the routes. We need to create a corresponding file `controllers/sessionController.js`. Here we use the `User` model. However, the file you copied makes some references to the JWT library. You must edit `models/User.js` to remove those references in order for `User.js` to load. We aren’t using JWTs in this project.
 
-```
+```javascript
 const User = require("../models/User");
 const parseVErr = require("../util/parseValidationErr");
 
@@ -215,7 +215,7 @@ The `registerDo` handler will check if the two passwords the user entered match,
 
 If there is a Mongoose validation error when creating a user record, we need to parse the validation error object to return the issues to the user in a more helpful format, and we do that in the file util/parseValidationErrs.js:
 
-```
+```javascript
 const parseValidationErrors = (e, req) => {
   const keys = Object.keys(e.errors);
   keys.forEach((key) => {
@@ -228,7 +228,7 @@ module.exports = parseValidationErrors;
 
 We need some middleware to load `res.locals` with any variables we need, like the logged in user and flash properties. Create `middleware/storeLocals.js`:
 
-```
+```javascript
 const storeLocals = (req, res, next) => {
   if (req.user) {
     res.locals.user = req.user;
@@ -245,7 +245,7 @@ module.exports = storeLocals;
 
 Now, we need a couple of `app.use` statements. Add these lines right after the `connect-flash` line:
 
-```
+```javascript
 app.use(require("./middleware/storeLocals"));
 app.get("/", (req, res) => {
   res.render("index");
@@ -257,7 +257,7 @@ The storeLocals middleware sets the values for errors, info, and user, but in re
 
 We are now using the database. So, we need to connect to it at startup. You need a file, `db/connect.js`. Check that it looks like the following:
 
-```
+```javascript
 const mongoose = require("mongoose");
 
 const connectDB = (url) => {
@@ -269,7 +269,7 @@ module.exports = connectDB;
 
 Then add this line to `app.js`, just before the listen line:
 
-```
+```javascript
 await require("./db/connect")(process.env.MONGO_URI);
 ```
 
@@ -279,7 +279,7 @@ Then try the application out, starting at the `"/"` URL. You can try each of the
 
 To use Passport, you have to tell it how to authenticate users, retrieving them from the database. Create a file `passport/passportInit.js`, as follows:
 
-```
+```javascript
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const User = require("../models/User");
@@ -349,7 +349,7 @@ Then when Passport is handling a protected route, it will use the `deserializeUs
 
 You can now add the following lines to `app.js`, right _after_ the `app.use` for session (Passport relies on session):
 
-```
+```javascript
 const passport = require("passport");
 const passportInit = require("./passport/passportInit");
 
@@ -364,7 +364,7 @@ Then we call `passport.initialize()` (which sets up Passport to work with Expres
 
 Finally, you can now uncomment the lines having to do with Passport in `routes/sessionRoutes.js`, so that the require statement for Passport is included, and so that the route for logon looks like
 
-```
+```javascript
 router
   .route("/logon")
   .get(logonShow)
@@ -381,7 +381,7 @@ This means that when someone sends a `POST` request to the `/sessions/logon` pat
 
 Since we’re letting Passport handle setting the `req.flash` properties now, we can remove the lines in `controllers/sessionController.js` that set the flash messages for the `loginShow` handler. So that should now just look like:
 
-```
+```javascript
 const logonShow = (req, res) => {
   if (req.user) {
     return res.redirect("/");
@@ -398,7 +398,7 @@ To protect a route, you need some middleware, as follows.
 
 `middleware/auth.js`:
 
-```
+```javascript
 const authMiddleware = (req, res, next) => {
   if (!req.user) {
     req.flash("error", "You can't access that page before logon.");
@@ -417,7 +417,7 @@ We want to protect any route for the `"/secretWord"` path. The best practice is 
 
 `routes/secretWord.js`:
 
-```
+```javascript
 const express = require("express");
 const router = express.Router();
 
@@ -448,37 +448,19 @@ We could further refactor this by moving the code for handling the routes (`(req
 
 Next let’s replace the `app.get` and `app.post` statements for the `"/secretWord"` routes in `app.js` with these lines:
 
-```
+```javascript
 const secretWordRouter = require("./routes/secretWord");
 app.use("/secretWord", secretWordRouter);
 ```
 
 Then try out the secretWord page to make sure it still works. Turning on protection is simple. You add the authentication middleware to the route above as follows:
 
-```
+```javascript
 const auth = require("./middleware/auth");
 app.use("/secretWord", auth, secretWordRouter);
 ```
 
 That causes the authentication middleware to run before the `secretWordRouter`, and it redirects if any requests are made for those routes before logon. Try it out: login and verify that you can see and change the secretWord. Then log off and try to go to the `"/secretWord"` URL.
-
-### Fixing the Security
-
-Passport is using the session cookie to determine if the user is logged in. This creates a security vulnerability called “cross site request forgery” (CSRF). We will demonstrate this.
-
-To see this, clone **[this repository](https://github.com/Code-the-Dream-School/csrf-attack)** into a separate directory, outside of the current `jobs-ejs` folder. Then, within the directory you cloned, install packages with `npm install` and run the app with `node app`. This will start another express application listening on port **4000** of your local machine. This is the attacking code. It could be running anywhere on the Internet — that has nothing to do with the attack.
-
-You should have two browser tabs open, one for localhost:3000, and one for localhost:4000\. The one at localhost:4000 just shows a button that says Click Me! **Don’t click it yet**. Use the `jobs-ejs` application in the 3000 tab to set the secret string to some value. Then close the tab for localhost:3000\. Then open a new tab for localhost:3000\. Then check the value of the secret string. So far so good — it still has the value you set. If you log off, your session is discarded. Try this: Log off. Then click the button in the localhost:4000 tab. Then log back on and view the secret string. It is back to syzygy. Set it to a custom value.
-
-Now, without logging off of jobs-ejs , click the button in the 4000 tab. Then refresh the /secretWord page in `jobs-ejs`. Hey, what happened! (By the way, this attack would succeed even if you closed the 3000 tab entirely.)
-
-You see, the other application sends a request to your application in the context of your browser — and that browser request automatically includes the cookie. So, the application thinks the request comes from a logged on user, and honors it. If the application, as a result of a form post, makes database changes, or even transfers money, the attacker could do that as well.
-
-So, how to fix this? This is the purpose of the host-csrf package you installed at the start of the project. Follow the instructions **[here](https://www.npmjs.com/package/host-csrf#:~:text=The%20csrf%20middleware,Example%3A)** to integrate the package with your application. You will need to change app.js as well as **each of the forms** in your EJS files. You can use `process.env.SESSION_SECRET` as your `cookie-parser` secret. Note that the `app.use` for the CSRF middleware must come _after_ the cookie parser middleware and _after_ the body parser middleware, but _before_ any of the routes. You will see a message logged to the console that the CSRF protection is not secure. That is because you are using HTTP, not HTTPS, so the package is less secure in this case, but you would be using HTTPS in production. As you will see, it stops the attack.
-
-Re-test, first to see that your application still works, and second, to see that the attack no longer works. (A moral: Always log off of sensitive applications before you surf, in case the sensitive application is vulnerable in this way. Also note that it does not help to close the application, as the cookie is still present in the browser. You have to log off to clear the cookie. Even restarting the browser does not suffice.)
-
-Enabling CSRF protection in the project is an _important_ part of this lesson — don’t omit it! By the way, the CSRF attack only works when the credential is in a cookie. It doesn’t work if you use JWTs in the authorization header. There are advantages and disadvantages to both forms of sending protected data between a client and a server — but it is always a bad idea to store sensitive data in browser local storage.
 
 ### Submitting Your Work
 
